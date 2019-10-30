@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <dirent.h>
 
+#define GetCurrentDir getcwd
 #define PORT 8080
 #define MAXCO 69
 
@@ -69,13 +70,12 @@ int chingarmeElServidor = 0;
 int chingarmeHiloBuscaCamios = 0;
 
 
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char const *argv[]){
 	
 	//Datos necesarios la primera vez
-
-
 	/*if(getTOPDOWNhtml()){
 		exit(-1);
 	}*/
@@ -119,8 +119,11 @@ int main(int argc, char const *argv[]){
 
 int generateHTML(){
 
-
-	FILE * htmlFile = fopen("/home/iworth/Escritorio/Proyecto2/index.html", "r");
+	char cwd[FILENAME_MAX];
+	GetCurrentDir( cwd, FILENAME_MAX );
+	strcat(cwd, "/index.html");
+	printf("path: %s",cwd);
+	FILE * htmlFile = fopen(cwd, "r");
 
 	if(htmlFile == 0){
 		printf("No se pudo encontrar %s", "htmlFile");
@@ -297,9 +300,11 @@ void sendIcon(int cliente){
 }
 
 char* parseDir(char * recurso){
-	char * where = "/home/iworth/Escritorio/Proyecto2"; 
-	char* result = (char*)malloc(strlen(where)+strlen(recurso)+1);
-	strcpy(result,where);
+	char cwd[FILENAME_MAX];
+	GetCurrentDir( cwd, FILENAME_MAX );
+	//char * where = "/home/iworth/Escritorio/Proyecto2"; 
+	char * result = (char*)malloc(strlen(cwd)+strlen(recurso)+1);
+	strcpy(result,cwd);
 	strcat(result,recurso);
 	printf("resiult%s\n",result );
 	return result;
