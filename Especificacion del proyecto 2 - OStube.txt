@@ -1,0 +1,102 @@
+------------------------------------------------------------------------------------------------------------------
+	SO - Proyecto 1 — OSTube - Galería de Videos
+------------------------------------------------------------------------------------------------------------------
+
+Sockets, Semaphores, Threads : Haciendo uso del material de los capítulos 12 al 15 del libro: "Beginning Linux Programming, Fourth Edition.pdf" vamos a proceder a implementar un sistema Servidor de Galería de Videos vía Web - OSTube
+
+
+	Video Server
+-----------------------------------
+
+A. Conectividad : 
+
+Todo sistema Web tiene dos componentes importantes: un servidor que tiene el control de los usuarios conectados al sistema y sus peticiones, y un programa cliente usado por el usuario para intercambiar mensajes o solicitudes con este programa servidor. Usaremos las IP de las máquinas para identificar al servidor y así cada cliente sepa dónde debe conectarse mediante sockets.
+
+Se usará un protocolo básico de comunicación entre el cliente y el servidor de forma tal que el cliente puede hacer consultas al servidor, en este caso, las consultas directas serán sobre archivos específicos en este caso archivos de video. Se usarán los mensajes más importantes del protocolo HTTP para pedir archivos del cliente al servidor tales como GET.
+
+
+B. Interfaz : 
+
+Para su programa servidor deberá preparar un archivo tipo responsive HTML o similar, tal como index.html, que se desplegará al usuario cuando éste se conecte al servidor desde una interfaz o navegador Web. Este deberá ajustar su contenido de acuerdo al tamaño de la pantalla o ventana donde se despliegue (escritorio, tablet, móvil, etc).
+
+Este archivo HTML o similar, una vez cargado en el cliente, mostrará una interfaz para desplegar una galería de videos al usuario. Esta galería contendrá una imagen que represente al video con su respectivo nombre en texto, descripción en texto del video, además del tamaño en bytes, fecha y hora del archivo. La distribución de éstos elementos en la interfaz gráfica (diseño del HTML) los definirá cada grupo de trabajo de acuerdo a su creatividad. Se tomará en cuenta la calidad de la interfaz y su creatividad. Todas las imágenes empleadas en la galería se deben cargar de forma independiente al HTML desde el servidor con peticiones tipo GET que hará automáticamente el navegador en uso. 
+
+Cuando un usuario seleccione algún video para ver, el mismo se debe transmitir como streaming desde el servidor para ser visualizado por el usuario. En la interfaz del navegador el video se desplegará haciendo uso de las propias capacidades del navegador web para tal fin, el video podría ser pausado, reiniciado, retrocedido o adelantado por el usuario. Use un buffer de tamaño considerable para la buena reproducción del video, tenga presente archivos muy muy grandes, los cuales NO deben ser descargados de forma completa en el cliente, sino que solo debe tenerse en uso en memoria principal el tamaño del buffer de reproducción, 1 a 10 megabytes máximo en memoria principal.
+
+
+C. Auto Configuración :
+
+Todos los datos a ser mostrados al usuario: imagen, textos e info del archivo, deberán cargarse directamente del servidor y no estar almacenados de forma fija en el HTML. Toda esta información debe estar en archivos de texto e imagen en el servidor, con el mismo nombre del archivo de video a mostrar, puede definir una carpeta "galería" dentro del directorio de su programa servidor para almacenar dichos archivos. Esto quiere decir que usted tendrá un archivo index de entrada cuyo contenido deberá generar cada vez que se conecte un cliente al servidor. Para minimizar el trabajo del servidor, use "marcas" en su servidor, como una firma tipo checksum (como md5) para verificar si el contenido ha variado desde la última versión del archivo index generado. Así solo se debe re-generar el archivo index cuando el contenido interno de los archivos ha cambiado, la cantidad ha aumentado o disminuido o el index no estuviera presente (haya sido borrado). Los datos de título del video, descripción, fecha y hora, podrán ser cambiados por algún usuario administrador directamente en el servidor, no debe programar una interfaz para esto, solo debe especificar el procedimiento que debe seguirse para modificar la información, agregar o eliminar videos. La información modificada será visible inmediantamente al recargar la página en el lado del cliente.
+Se debe permitir que varios clientes estén conectados de forma simultánea al servidor y recibiendo información de éste.
+
+D. Servidor :
+
+El programa servidor manejará hilos (threads) y semáforos para poder llevar el control de las diversas actividades asíncronas: envío y recepción de solicitudes, transferencias de datos, etc.. 
+
+El programa servidor, tendrá un menú de opciones que permita listar las peticiones atendidas. este menú estará disponible en la terminal donde corra el servidor para que un usuario administrador consulte información del servidor. Pueden consultarse datos como hora de inicio, cantidad de bytes transferidos, velocidad promedio, cantidad de clientes diferentes (IP) que han consultado, cantidad de solicitudes atendidas, cantidad de threads creados, etc.
+
+El servidor deberá llevar un registro tipo LOG o bitácora de texto de todas las actividades realizadas: llegada de usuarios, fecha, hora, IP, desconexión, mensajes de las solicitudes, errores, etc. Este archivo debe estarse actualizando de forma sincrónica (semáforos) por parte de los hilos trabajadores, y podría ser consultado en cualquier momento por un usuario administrador directamente en el servidor. 
+
+
+E. Validación
+
+Un programa cliente podría tener un archivo index desactualizado, su programa deberá notificar al usuario si al intentar acceder dicho archivo el mismo ya no existe o su contenido fue actualizado, en cuyo caso indicará al usuario que se recargará la información actualizada del servidor y cargar de nuevo el archivo index más reciente.
+
+
+F. Cliente Terminal
+
+Programe un cliente de terminal, que únicamente realizará peticiones de archivos de video en el servidor, que transfiera los datos al cliente y los mismos se desechan al llegar. El propósito de este cliente será el de realizar pruebas de stress para hacer varias solicitudes concurrentes al servidor. Y generar estadísticas sobre la cantidad de datos transmitidos y la duración de las mismas.
+
+En el caso del cliente como web browser, usaremos los navegadores que ya vienen en la máquina como un Google Chrome o Firefox, estos al contactar un servidor usan el protocolo HTTP de forma estándar, y al solicitar un archivo se genera un request llamado GET el cual es un texto con el nombre del archivo requerido por el cliente (el navegador), el servidor verifica si el archivo existe y de ser así envía los datos vía socket al cliente. En este caso al ser un navegador, el archivo recibido será reproducido por el navegador. Si hacemos esta prueba desde varias máquinas a la vez, el servidor atenderá dichas solicitudes de forma concurrente, ya que todo será programado con hilos.
+
+Para hacer pruebas es deseable que los videos sean de tamaño considerable para que los archivos sean grandes en tamaño y podamos ver el servidor trabajando en un tiempo considerable de forma concurrente con múltiples clientes.
+
+-------------------------------------------------------------------------------------------
+
+G. Extras: 
+
+Se considerará con puntos extras las siguientes mejoras :
+
++ 5 pts. configurar un servidor DNS local para resolución del nombre del servidor y el cliente use un nombre URL para conectarse en lugar de una IP 
+
++ 5 pts. definir secciones para tipos de videos, con múltiples páginas HTML o similar para cada sección, el cliente podrá navegar entre dichas páginas y visualizar el video que desee. 
+
++ 5 pts. ver la galería disponible de videos como slide show de los videos contenidos (su imagen representativa y sus datos asociados) uno por uno a pantalla completa del navegador en uso
+
++ 5 pts. permitir a un usuario administrador modificar la información de los archivos mediante una interfaz web interactiva, que guarde los cambios en los archivos de los videos en el servidor. Dicho usuario administrador deberá autenticarse mediante una contraseña. Puede crear una página alternativa para esta configuración independiente de la principal y que acceda mediante otro puerto diferente al :80 estándar.
+
+
+-------------------------------------------------------------------------------------------
+
+Observaciones:
+
++ El programa debe estar completamente desarrollado en C con GCC y sobre Linux, únicamente. 
+
++ Debe usar las librerías socket y pthread de C para el desarrollo.
+
++ Todos los programas deben correr exclusivamente en las máquinas de los laboratorios de la Escuela, únicamente.
+
++ Trabajo en parejas de DOS máximo.
+
++ Realizar un documento técnico que explique la solución y su implementación de forma muy detallada con: estructuras de datos, protocolo implementado, mensajes usados y mecanismos de comunicación y sincronización, etc. explicando ampliamente todas las partes. El código debe venir como Apéndices, debidamente documentado y explicado.
+
++ Debe utilizar el servidor Git de la Escuela para su desarrollo.
+
++ Debe entregar el documento técnico en PDF así como todo el código fuente creado, en archivos de texto adjuntos. La documentación en LaTeX valdrá 5pts extra, entregando su archivo fuente asociado y el PDF. 
+
+
+
+Entrega : 
+
++ Se entrega en digital al correo: earias@ic-itcr.ac.cr
+
++ Fecha de Entrega: Lunes 28 Octubre, hasta antes de la media noche
+
++ Revisión : se definirá mediante citas de revisión luego de la entrega
+
++ Usar el Subject: SO - OSTube - Nombre1Apellido1, Nombre2Apellido2
+
+
+
+
+Prof. Esteban Arias M.

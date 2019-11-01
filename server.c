@@ -178,7 +178,6 @@ void sendIcon(int cliente){
 char* parseDir(char * recurso){
 	char cwd[FILENAME_MAX];
 	GetCurrentDir( cwd, FILENAME_MAX );
-	//char * where = "/home/iworth/Escritorio/Proyecto2"; 
 	char * result = (char*)malloc(strlen(cwd)+strlen(recurso)+1);
 	strcpy(result,cwd);
 	strcat(result,recurso);
@@ -222,10 +221,8 @@ void sendVideo(char *recurso, int cliente){
 		write(cliente, help, largoArchivo);
 		i++;
 	}*/
-	
-	
-	
 }
+
 char * getFragmento(char * buff,int page, int largoArchivo, int tamanoFrag){
 	int inicio = page * tamanoFrag;
 	int fin;
