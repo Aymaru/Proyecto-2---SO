@@ -47,8 +47,6 @@ int main(int argc, char const *argv[]){
 		exit(-1);
 	}
 
-
-
 	int socketServidor, socketTemporal;
 	struct sockaddr_in direccionServidor;
 	struct sockaddr_storage servidorStorage;
@@ -70,6 +68,7 @@ int main(int argc, char const *argv[]){
 		socketTemporal = accept(socketServidor, (struct sockaddr*)&servidorStorage, &largoDireccion);
 
 		//hilo para atender socket
+		printf("%s\n","Nuevo hilo");
 		pthread_t nuevoHilo;
 		pthread_create(&nuevoHilo, NULL, &mainThread, (void *)&socketTemporal);
 
@@ -84,6 +83,7 @@ void *mainThread(void *arg){
 	char *buffer = (char *)malloc(4098);
 	
 	int webClient = *((int *)arg);
+	printf("Se nuevo hilo: %d\n",webClient);
 
 	ssize_t datosLeidos = read(webClient, buffer, 4098);
 	
@@ -93,10 +93,9 @@ void *mainThread(void *arg){
 		close(webClient);
 		pthread_exit(NULL);
 	}
-	printf("DatosLeidos: %s\n",buffer);
-
+	//printf("DatosLeidos: %s\n",buffer);
 	char *recurso = getSolicitud(buffer); //HACER FUNCION - QUE DEVUELVA LO DE ABAJO
-	printf("recurso %s\n", recurso);
+	//printf("recurso %s\n", recurso);
 
 	if(strcmp(recurso, "/") == 0){
 		printf("sendHTML\n");
@@ -105,7 +104,7 @@ void *mainThread(void *arg){
 	}
 	else if(strcmp(recurso,"/favicon.ico") == 0){
 		printf("sendIcon\n");
-		sendIcon(webClient);
+		//sendIcon(webClient);
 	}
 	else{
 		if(isPNG(recurso)){
@@ -120,7 +119,7 @@ void *mainThread(void *arg){
 		}
 
 	}
-
+	printf("Se cierra el hilo: %d\n",webClient);
 	close(webClient);
 	pthread_exit(NULL);
 }
@@ -139,6 +138,7 @@ int isMP4(char* recurso){
 	return 0;
 }
 char *getSolicitud(char *solicitud){
+	printf("%s",solicitud);
 	if (solicitud[0] == 'G' && solicitud[1] == 'E' && solicitud[2] == 'T') {
 		int i;
 		for(i = 4; solicitud[i] != ' '; i++);
@@ -161,8 +161,9 @@ char *getSolicitud(char *solicitud){
 }
 
 void sendHTML(int cliente){
-	write(cliente, htmlHeader, strlen(htmlHeader));
+	
 	pthread_mutex_lock(&mutex);
+	write(cliente, htmlHeader, strlen(htmlHeader));
 	htmlLargo = strlen(html);
 	write(cliente,html,htmlLargo);
 	pthread_mutex_unlock(&mutex);
