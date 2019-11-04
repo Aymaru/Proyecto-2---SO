@@ -1,28 +1,20 @@
+#include <stdlib.h> 
+#include <unistd.h> 
+#include <errno.h> 
+#include <netdb.h> 
+#include <sys/types.h> 
+#include <sys/socket.h> 
+#include <netinet/in.h> 
+#include <arpa/inet.h> 
+#include <string.h> 
 #include <stdio.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <stddef.h>
 
 #define GetCurrentDir getcwd
 
-
-void createMidHTML(FILE *html, DIR *dr);
-int generateHTML();
-int getTOPDOWNhtml();
-
-char *htmlTOP;
-char *htmlTOPDir;
-char *htmlBOT;
-char *htmlBOTDir;
-/*char *templateVideo = 
-	"<div class=\"w3-third w3-container w3-margin-bottom\">\n"
-	"\t<img src=\"images/%s\"  alt=\"TONACO\" style=\"width:100%%\""
-	"class=\"w3-hover-opacity\" onclick=\"\">\n"
-	"\t<div class=\"w3-container w3-white\">\n"
-	"\t\t<p><b>Texto descripcion</b></p>\n"
-	"\t\t<p>Texto de descripcion del archivo</p>\n"
-	"\t\t<p>Tamano: en bytes</p>\n"
-	"\t\t<p>Fecha y hora del archivo</p>\n"
-	"\t</div>\n"
-	"</div>\n";*/
 char *htmlHeader = 
 	"HTTP/1.1 403 Forbidden\r\n"
 	"Server: localHost:8080\r\n"
@@ -32,13 +24,179 @@ char *html;
 size_t htmlLargo = 0;
 char *checksum;
 
-int generateHTML(){
+char* substr(const char *src, int m, int n){
+	// get length of the destination string
+	int len = n - m;
 
-	char cwd[FILENAME_MAX];
+	// allocate (len + 1) chars for destination (+1 for extra null character)
+	char *dest = (char *)malloc(sizeof(char) * (len + 1));
+
+	// extracts characters between m'th and n'th index from source string
+	// and copy them into the destination string
+	for (int i = m; i < n && (*src != '\0'); i++)
+	{
+        * dest = *(src + i);
+		dest++;
+	}
+
+	// null-terminate the destination string
+	* dest = '\0';
+
+	// return the destination strin
+	return dest - len;
+}
+
+char *replaceWord(const char *s, const char *oldW, const char *newW) 
+{ 
+    char *result; 
+    int i, cnt = 0; 
+    int newWlen = strlen(newW); 
+    int oldWlen = strlen(oldW); 
+  
+    // Counting the number of times old word 
+    // occur in the string 
+    for (i = 0; s[i] != '\0'; i++) 
+    { 
+        if (strstr(&s[i], oldW) == &s[i]) 
+        { 
+            cnt++; 
+  
+            // Jumping to index after the old word. 
+            i += oldWlen - 1; 
+        } 
+    } 
+  
+    // Making new string of enough length 
+    result = (char *)malloc(i + cnt * (newWlen - oldWlen) + 1); 
+  
+    i = 0; 
+    while (*s) 
+    { 
+        // compare the substring with the result 
+        if (strstr(s, oldW) == s) 
+        { 
+            strcpy(&result[i], newW); 
+            i += newWlen; 
+            s += oldWlen; 
+        } 
+        else
+            result[i++] = *s++; 
+    } 
+  
+    result[i] = '\0'; 
+    return result; 
+} 
+
+int generate_html()
+{
+    char *path_imagenes_relativo = "/Imagenes/";
+    char *path_videos_relativo = "/Videos/";
+    
+    char cwd[FILENAME_MAX];
 	GetCurrentDir( cwd, FILENAME_MAX );
-	strcat(cwd, "/index.html");
-	printf("path: %s",cwd);
-	FILE * htmlFile = fopen(cwd, "r");
+    char path_imagenes_absoluto [512];
+    char path_videos_absoluto [512];
+    strcpy(path_imagenes_absoluto,cwd);
+    strcpy(path_videos_absoluto,cwd);
+    strcat(path_imagenes_absoluto, path_imagenes_relativo);
+    strcat(path_videos_absoluto, path_videos_relativo);
+    /* printf("PATH ACTUAL%s\n",cwd);
+    printf("PATH IMAGENES%s\n",path_imagenes_absoluto);
+    printf("PATH VIDEOS%s\n",path_videos_absoluto); */
+    char tiempoSlider[] = "100000";    
+    char descripcionAlbum[] = "Album de Vacaciones 2019";
+    struct stat fileStat;
+    DIR *i;DIR *v;
+    struct dirent *dir;struct dirent *dir2;
+    i = opendir(path_imagenes_absoluto);
+    char imgName[100000];
+    if (i){
+        while ((dir = readdir(i)) != NULL)
+        {
+            if (strncmp(dir->d_name, ".", 1) == 0){}else{
+                strcat(imgName,"'");
+                strcat(imgName,dir->d_name);
+                strcat(imgName,"'");
+                strcat(imgName,",");
+            }
+        }
+        //printf("Primer substr%s\n","");
+        strcpy(imgName,substr(imgName, 0, strlen(imgName)-1));
+        strcpy(imgName,replaceWord(imgName, ".jpg", ""));
+        //printf(imgName);
+        closedir(i);
+    }
+
+    v = opendir(path_videos_absoluto);
+    char videoName[100000];
+    char temp[1000];
+
+    if (v){
+        while ((dir2 = readdir(v)) != NULL)
+        {
+            if (strncmp(dir2->d_name, ".", 1) == 0){}else{
+                strcat(videoName,"[");
+                strcat(videoName,"'");
+                strcat(videoName,dir2->d_name);
+                strcat(videoName,"'");
+                strcat(videoName,",");
+                strcat(videoName,"'Vacaciones'");
+                strcat(videoName,",");
+                strcpy(temp,path_videos_absoluto);
+                strcat(temp,dir2->d_name);
+                struct stat fileStat;   
+                if(stat(temp,&fileStat) < 0){return 1;}    
+                strcat(videoName,"'");
+                int aux = fileStat.st_size;
+                char aux2[100]; 
+                sprintf(aux2,"%d bytes",aux);
+                strcat(videoName,aux2);
+                strcat(videoName,"'");
+                time_t now = time(&fileStat.st_mtime);
+                struct tm *info;
+                info = localtime( &now );
+                strcat(videoName,",");
+                strcat(videoName,"'");
+                strcat(videoName,ctime(&fileStat.st_mtime));
+                strcat(videoName,"'");
+                strcat(videoName,"],");
+            }
+        }
+        strcpy(videoName,substr(videoName, 0, strlen(videoName)-1));
+        strcpy(videoName,replaceWord(videoName, ".MP4", ""));
+        strcpy(videoName,replaceWord(videoName, "\n", ""));
+        //printf(videoName);
+        closedir(v);
+    }
+
+    
+    //Cantidad de archivos
+    char indexHTML[100000]= "<!DOCTYPE html><html><head><title>OSTube</title><link rel=\"stylesheet\" type=\"text/css\" href=\"https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><link rel=\"stylesheet\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\"><link rel=\"stylesheet\" href=\"estilos.css\"><script src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\" ></script><script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js\"></script> </head><body><h1>OSTube</h1><p id=\"infoGalaria\">Galeria de Videos</p><div id=\"slider\"><div id=\"box\"><img src=\"bienvenidos.png\"></div><button class=\"prew fa fa-chevron-left\" onclick=\"prewImage()\"></button><button class=\"next fa fa-chevron-right\" onclick=\"nextImage()\"></button></div><button onclick=\"myFunction()\" id=\"play\" data-toggle=\"modal\" data-target=\"#exampleModalCenter\">Ver video</button><script type=\"text/javascript\"> var slider_content = document.getElementById('box');var image = [";
+    //Insertamos los nombres de las imagenes: 'a','b','c'
+    strcat(indexHTML,imgName);
+    
+    strcat(indexHTML, "];image.sort();var imageInfo = [");
+    //Insertamos la informacion de los videos: ['caso1','A1','25','10/20/2019 - 20:20'],['caso2','A2','26','11/20/2019 - 21:20'],['caso3','A3','27','12/20/2019 - 22:20'],['caso4','A4!!','28','13/20/2019 - 23:20']]
+    strcat(indexHTML,videoName);
+    strcat(indexHTML, "];imageInfo.sort();var i = image.length;function nextImage(){if (i<image.length) {i= i+1;}else{i = 1;}slider_content.innerHTML = \"<img src=Imagenes/\"+image[i-1]+\".jpg data-toggle=\\\"modal\\\" data-target=\\\"#exampleModalCenter\\\"><hr width=\\\"80%\\\"><h2>Información del Video:</h2><ul><li><p>Nombre : \"+imageInfo[i - 1] [0]+\"</p></li><li><p>Descripción : ");
+    strcat(indexHTML,descripcionAlbum);
+    strcat(indexHTML,"</p></li><li><p>Tamaño : \"+imageInfo[i - 1] [2]+\"</p></li><li><p>Creación : \"+imageInfo[i - 1] [3]+\"</p></li></ul>\";}function prewImage(){if (i<image.length+1 && i>1) {i= i-1;}else{i = image.length;}slider_content.innerHTML = \"<img src=/Imagenes/\"+image[i-1]+\".jpg data-toggle=\\\"modal\\\" data-target=\\\"#exampleModalCenter\\\"><hr width=\\\"80%\\\"><h2>Información del Video:</h2><ul><li><p>Nombre : \"+imageInfo[i - 1] [0]+\"</p></li><li><p>Descripción : ");
+    strcat(indexHTML,descripcionAlbum);
+    strcat(indexHTML,"</p></li><li><p>Tamaño : \"+imageInfo[i - 1] [2]+\"</p></li><li><p>Creación : \"+imageInfo[i - 1] [3]+\"</p></li></ul>\";}setInterval(nextImage ,");
+    strcat(indexHTML, tiempoSlider);
+    strcat(indexHTML, ");function myFunction() {var r = confirm(\"¿Desea ver el video?\"); if (r == true) {slider_content.innerHTML = \"<div class=\\\"modal fade\\\" data-keyboard=\\\"false\\\" id=\\\"exampleModalCenter\\\" tabindex=\\\"-1\\\" role=\\\"dialog\\\" aria-labelledby=\\\"exampleModalCenterTitle\\\" aria-hidden=\\\"true\\\"><div class=\\\"modal-dialog modal-dialog-centered\\\" role=\\\"document\\\"><div class=\\\"modal-content\\\"><div class=\\\"modal-header\\\"><button type=\\\"button\\\" class=\\\"close\\\" data-dismiss=\\\"modal\\\" aria-label=\\\"Close\\\"><span aria-hidden=\\\"true\\\">&times;</span></button>      </div><div class=\\\"modal-body\\\"><video height=\\\"700\\\" controls autoplay loop id=\\\"videoDinamico\\\"><source src=Videos/\"+image[i-1]+\".MP4 type=\\\"video/mp4\\\"></video></div><div class=\\\"modal-footer\\\"><button onclick=\\\"cerrar()\\\" type=\\\"button\\\" class=\\\"cerrado\\\" data-dismiss=\\\"modal\\\">Cerrar</div> </div> </div></div>\";} else {location.reload();}}function cerrar() {location.reload();}</script><script src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\"></script></body></html>");
+    
+    //printf(indexHTML);
+    FILE *htmlFile;
+    htmlFile = fopen("index.html","w+");
+    if (htmlFile == NULL){}else{
+        fputs(indexHTML,htmlFile);
+    }
+    fclose(htmlFile);
+
+    strcat(cwd, "/index.html");
+	//printf("path: %s",cwd);
+	htmlFile = fopen(cwd, "r");
 
 	if(htmlFile == 0){
 		printf("No se pudo encontrar %s", "htmlFile");
@@ -57,65 +215,4 @@ int generateHTML(){
 	return 0;
 }
 
-
-/*
-void createMidHTML(FILE * html, DIR *dr){
-	struct dirent *de;
-
-
-	char *abrirContenedor = "<div class=\"w3-row-padding\">";
-	fwrite(abrirContenedor, 1, strlen(abrirContenedor), html);
-
-
-	for (int i = 0; (de = readdir(dr)) != NULL; i++){
-		if(strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) {
-			i--;
-			continue;
-		}
-
-		fprintf(html, templateVideo, de->d_name);
-	}
-
-
-	char *cerrarContenedor = "</div>";
-	fwrite(cerrarContenedor, 1, strlen(cerrarContenedor), html);
-
-}*/
-
-int getTOPDOWNhtml() {
-	size_t largoArchivo;
-
-
-	FILE * htmlSuperior = fopen(htmlTOPDir, "r");
-
-	if(htmlSuperior == 0){
-		printf("No se pudo encontrar %s", htmlTOPDir);
-		return 1;
-	}
-
-	fseek(htmlSuperior, 0, SEEK_END);
-	largoArchivo = (size_t)ftell(htmlSuperior);
-	fseek(htmlSuperior, 0, SEEK_SET);
-
-
-	htmlTOP = (char *)malloc(largoArchivo + 1);
-	fread(htmlTOP, 1, largoArchivo, htmlSuperior);
-	fclose(htmlSuperior);
-
-
-	FILE *htmlInferior = fopen(htmlBOTDir, "r");
-
-	if(htmlInferior == 0){
-		printf("NO se pudo encontrar %s", htmlBOTDir);
-		return 1;
-	}
-
-	fseek(htmlInferior, 0, SEEK_END);
-	largoArchivo = (size_t)ftell(htmlInferior);
-	fseek(htmlInferior, 0 ,SEEK_SET);
-
-
-	htmlBOT = (char *)malloc(largoArchivo + 1);
-	fread(htmlBOT, 1, largoArchivo, htmlInferior);
-	fclose(htmlInferior);
-}
+  
